@@ -2,18 +2,24 @@ package graph.spark.example.model.typed;
 
 import java.math.BigDecimal;
 
-public class SalesOrderLine extends Edge
+public class SalesOrderLine implements Attributes
 {
     private static final long serialVersionUID = 1L;
+
+    public static final String label = "SalesOrderLine";
 
     public final int        quantity;
     public final BigDecimal salesPrice;
 
-    public SalesOrderLine( int sourceId, int targetId, int quantity, BigDecimal salesPrice )
+    public SalesOrderLine( int quantity, BigDecimal salesPrice )
     {
-        super( sourceId, targetId );
-
         this.quantity   = quantity;
         this.salesPrice = salesPrice;
+    }
+
+    @Override
+    public String getLabel()
+    {
+        return label;
     }
 }

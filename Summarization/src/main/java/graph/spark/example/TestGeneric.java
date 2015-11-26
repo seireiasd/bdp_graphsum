@@ -12,8 +12,9 @@ import org.apache.spark.api.java.function.Function;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
-import graph.spark.example.model.generic.GenericEdge;
-import graph.spark.example.model.generic.GenericVertex;
+import graph.spark.Edge;
+import graph.spark.Vertex;
+import graph.spark.example.model.generic.GenericAttributes;
 import graph.spark.parser.SparkParser;
 
 public class TestGeneric
@@ -27,10 +28,10 @@ public class TestGeneric
 
         try
         {
-            SparkConf               conf     = new SparkConf().setAppName( "Spark Test" ).setMaster( "local[1]" );
-            JavaSparkContext        context  = new JavaSparkContext( conf );
-            JavaRDD<GenericVertex>  vertices = SparkParser.parseJson( context.textFile( "data/nodes.json" ), new VertexMapper() );
-            JavaRDD<GenericEdge>    edges    = SparkParser.parseJson( context.textFile( "data/edges.json" ), new EdgeMapper() );
+            SparkConf                          conf     = new SparkConf().setAppName( "Spark Test" ).setMaster( "local[1]" );
+            JavaSparkContext                   context  = new JavaSparkContext( conf );
+            JavaRDD<Vertex<GenericAttributes>> vertices = SparkParser.parseJson( context.textFile( "data/nodes.json" ), new VertexMapper() );
+            JavaRDD<Edge<GenericAttributes>>   edges    = SparkParser.parseJson( context.textFile( "data/edges.json" ), new EdgeMapper() );
 
             vertices.cache();
             edges.cache();
@@ -39,15 +40,11 @@ public class TestGeneric
             System.out.println( "edges: " + edges.count() );
 
             System.out.println( "first Customer.name: " +
-                                vertices.filter( vertex -> vertex.attributes.get( "label" ).equals( "Customer" ) )
-                                        .collect()
-                                        .get( 0 )
-                                        .attributes.get( "name" ) );
+                                vertices.filter( vertex -> vertex.getData().pairs.get( "label" ).equals( "Customer" ) )
+                                        .collect().get( 0 ).getData().pairs.get( "name" ) );
             System.out.println( "first PurchOrderLine.quantity: " +
-                                edges.filter( edge -> edge.attributes.get( "label" ).equals( "PurchOrderLine" ) )
-                                     .collect()
-                                     .get( 0 )
-                                     .attributes.get( "quantity" ) );
+                                edges.filter( edge -> edge.getData().pairs.get( "label" ).equals( "PurchOrderLine" ) )
+                                     .collect().get( 0 ).getData().pairs.get( "quantity" ) );
 
             context.close();
         }
@@ -57,16 +54,16 @@ public class TestGeneric
         }
     }
 
-    private static class VertexMapper implements Function<JsonNode, GenericVertex>
+    private static class VertexMapper implements Function<JsonNode, Vertex<GenericAttributes>>
     {
         private static final long serialVersionUID = 1L;
 
         @Override
-        public GenericVertex call( JsonNode node )
+        public Vertex<GenericAttributes> call( JsonNode node )
         {
-            GenericVertex vertex = new GenericVertex( node.get( "id" ).asInt() );
+            GenericAttributes attributes = new GenericAttributes();
 
-            vertex.attributes.put( "label", node.get( "meta" ).get( "label" ).asText() );
+            attributes.pairs.put( "label", node.get( "meta" ).get( "label" ).asText() );
 
             Iterator<Entry<String, JsonNode>> props = node.get( "data" ).fields();
 
@@ -76,15 +73,15 @@ public class TestGeneric
 
                 if ( entry.getValue().isDouble() )
                 {
-                    vertex.attributes.put( entry.getKey(), new Double( entry.getValue().asDouble() ) );
+                    attributes.pairs.put( entry.getKey(), new Double( entry.getValue().asDouble() ) );
                 }
                 else if ( entry.getValue().isInt() )
                 {
-                    vertex.attributes.put( entry.getKey(), new Integer( entry.getValue().asInt() ) );
+                    attributes.pairs.put( entry.getKey(), new Integer( entry.getValue().asInt() ) );
                 }
                 else if ( entry.getValue().isTextual() )
                 {
-                    vertex.attributes.put( entry.getKey(), entry.getValue().asText() );
+                    attributes.pairs.put( entry.getKey(), entry.getValue().asText() );
                 }
                 else
                 {
@@ -92,20 +89,20 @@ public class TestGeneric
                 }
             }
 
-            return vertex;
+            return new Vertex<GenericAttributes>( node.get( "id" ).asLong(), attributes );
         }
     }
 
-    private static class EdgeMapper implements Function<JsonNode, GenericEdge>
+    private static class EdgeMapper implements Function<JsonNode, Edge<GenericAttributes>>
     {
         private static final long serialVersionUID = 1L;
 
         @Override
-        public GenericEdge call( JsonNode node )
+        public Edge<GenericAttributes> call( JsonNode node )
         {
-            GenericEdge edge = new GenericEdge( node.get( "source" ).asInt(), node.get( "target" ).asInt() );
+            GenericAttributes attributes = new GenericAttributes();
 
-            edge.attributes.put( "label", node.get( "meta" ).get( "label" ).asText() );
+            attributes.pairs.put( "label", node.get( "meta" ).get( "label" ).asText() );
 
             Iterator<Entry<String, JsonNode>> props = node.get( "data" ).fields();
 
@@ -115,15 +112,15 @@ public class TestGeneric
 
                 if ( entry.getValue().isDouble() )
                 {
-                    edge.attributes.put( entry.getKey(), new Double( entry.getValue().asDouble() ) );
+                    attributes.pairs.put( entry.getKey(), new Double( entry.getValue().asDouble() ) );
                 }
                 else if ( entry.getValue().isInt() )
                 {
-                    edge.attributes.put( entry.getKey(), new Integer( entry.getValue().asInt() ) );
+                    attributes.pairs.put( entry.getKey(), new Integer( entry.getValue().asInt() ) );
                 }
                 else if ( entry.getValue().isTextual() )
                 {
-                    edge.attributes.put( entry.getKey(), entry.getValue().asText() );
+                    attributes.pairs.put( entry.getKey(), entry.getValue().asText() );
                 }
                 else
                 {
@@ -131,7 +128,7 @@ public class TestGeneric
                 }
             }
 
-            return edge;
+            return new Edge<GenericAttributes>( node.get( "source" ).asLong(), node.get( "target" ).asLong(), attributes );
         }
     }
 }

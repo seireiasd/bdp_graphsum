@@ -2,18 +2,24 @@ package graph.spark.example.model.typed;
 
 import java.time.LocalDate;
 
-public class PurchOrder extends Vertex
+public class PurchOrder implements Attributes
 {
     private static final long serialVersionUID = 1L;
+
+    public static final String label = "PurchOrder";
 
     public final String    num;
     public final LocalDate date;
 
-    public PurchOrder( int nodeId, String num, LocalDate date )
+    public PurchOrder( String num, LocalDate date )
     {
-        super( nodeId );
-
         this.num  = num;
         this.date = date;
+    }
+
+    @Override
+    public String getLabel()
+    {
+        return label;
     }
 }
