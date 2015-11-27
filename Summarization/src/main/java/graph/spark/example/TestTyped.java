@@ -59,11 +59,11 @@ public class TestTyped
             System.out.println( "edges: " + edges.count() );
 
             System.out.println( "first Customer.name: " +
-                                ( ( Customer ) vertices.filter( vertex -> vertex.getData().getLabel() == Customer.label )
-                                                       .collect().get( 0 ).getData() ).name );
+                                vertices.filter( vertex -> vertex.getData().getLabel() == Customer.label )
+                                        .collect().get( 0 ).getData().<Customer>cast().name );
             System.out.println( "first PurchOrderLine.quantity: " +
-                                ( ( PurchOrderLine ) edges.filter( edge -> edge.getData().getLabel() == PurchOrderLine.label )
-                                                          .collect().get( 0 ).getData() ).quantity );
+                                edges.filter( edge -> edge.getData().getLabel() == PurchOrderLine.label )
+                                     .collect().get( 0 ).getData().<PurchOrderLine>cast().quantity );
 
             context.close();
         }
