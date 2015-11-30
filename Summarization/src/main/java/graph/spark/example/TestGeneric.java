@@ -15,7 +15,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 
 import graph.spark.Edge;
 import graph.spark.Vertex;
-import graph.spark.example.model.generic.GenericAttributes;
+import graph.spark.example.model.generic.Attributes;
 import graph.spark.parser.SparkParser;
 
 public class TestGeneric
@@ -29,10 +29,10 @@ public class TestGeneric
 
         try
         {
-            SparkConf                          conf     = new SparkConf().setAppName( "Spark Test" ).setMaster( "local[1]" );
-            JavaSparkContext                   context  = new JavaSparkContext( conf );
-            JavaRDD<Vertex<GenericAttributes>> vertices = SparkParser.parseJson( context.textFile( "data/nodes.json" ), new VertexMapper() );
-            JavaRDD<Edge<GenericAttributes>>   edges    = SparkParser.parseJson( context.textFile( "data/edges.json" ), new EdgeMapper() );
+            SparkConf                   conf     = new SparkConf().setAppName( "Spark Test" ).setMaster( "local[1]" );
+            JavaSparkContext            context  = new JavaSparkContext( conf );
+            JavaRDD<Vertex<Attributes>> vertices = SparkParser.parseJson( context.textFile( "data/nodes.json" ), new VertexMapper() );
+            JavaRDD<Edge<Attributes>>   edges    = SparkParser.parseJson( context.textFile( "data/edges.json" ), new EdgeMapper() );
 
             vertices.cache();
             edges.cache();
@@ -41,11 +41,11 @@ public class TestGeneric
             System.out.println( "edges: " + edges.count() );
 
             System.out.println( "first Customer.name: " +
-                                vertices.filter( vertex -> vertex.getData().pairs.get( "label" ).equals( "Customer" ) )
-                                        .collect().get( 0 ).getData().pairs.get( "name" ) );
+                                vertices.filter( vertex -> vertex.getData().getLabel().equals( "Customer" ) )
+                                        .collect().get( 0 ).getData().getProperty( "name" ) );
             System.out.println( "first PurchOrderLine.quantity: " +
-                                edges.filter( edge -> edge.getData().pairs.get( "label" ).equals( "PurchOrderLine" ) )
-                                     .collect().get( 0 ).getData().pairs.get( "quantity" ) );
+                                edges.filter( edge -> edge.getData().getLabel().equals( "PurchOrderLine" ) )
+                                     .collect().get( 0 ).getData().getProperty( "quantity" ) );
 
             context.close();
         }
@@ -55,137 +55,134 @@ public class TestGeneric
         }
     }
 
-    private static class VertexMapper implements Function<JsonNode, Vertex<GenericAttributes>>
+    private static class VertexMapper implements Function<JsonNode, Vertex<Attributes>>
     {
         private static final long serialVersionUID = 1L;
 
         @Override
-        public Vertex<GenericAttributes> call( JsonNode node )
+        public Vertex<Attributes> call( JsonNode node )
         {
-            GenericAttributes attributes = new GenericAttributes();
-            String            label      = node.get( "meta" ).get( "label" ).asText();
+            Attributes attributes = new Attributes( node.get( "meta" ).get( "label" ).asText() );
 
-            attributes.pairs.put( "label", label );
-
-            switch ( label )
+            switch ( attributes.getLabel() )
             {
                 case "Client":
                 {
-                    attributes.pairs.put( "account", node.get( "data" ).get( "account" ).asText() );
-                    attributes.pairs.put( "name", node.get( "data" ).get( "name" ).asText() );
-                    attributes.pairs.put( "contactPhone", node.get( "data" ).get( "contactPhone" ).asText() );
-                    attributes.pairs.put( "erpCustNum", node.get( "data" ).get( "erpCustNum" ).asText() );
+                    attributes.setProperty( "account", node.get( "data" ).get( "account" ).asText() );
+                    attributes.setProperty( "name", node.get( "data" ).get( "name" ).asText() );
+                    attributes.setProperty( "contactPhone", node.get( "data" ).get( "contactPhone" ).asText() );
+                    attributes.setProperty( "erpCustNum", node.get( "data" ).get( "erpCustNum" ).asText() );
 
                     break;
                 }
                 case "Customer":
                 {
-                    attributes.pairs.put( "num", node.get( "data" ).get( "num" ).asText() );
-                    attributes.pairs.put( "name", node.get( "data" ).get( "name" ).asText() );
+                    attributes.setProperty( "num", node.get( "data" ).get( "num" ).asText() );
+                    attributes.setProperty( "name", node.get( "data" ).get( "name" ).asText() );
 
                     break;
                 }
                 case "DeliveryNote":
                 {
-                    attributes.pairs.put( "num", node.get( "data" ).get( "num" ).asText() );
-                    attributes.pairs.put( "date", LocalDate.parse( node.get( "data" ).get( "date" ).asText(),
-                                                                   DateTimeFormatter.ISO_LOCAL_DATE ) );
-                    attributes.pairs.put( "trackingCode", node.get( "data" ).get( "trackingCode" ).asText() );
+                    attributes.setProperty( "num", node.get( "data" ).get( "num" ).asText() );
+                    attributes.setProperty( "date", LocalDate.parse( node.get( "data" ).get( "date" ).asText(),
+                                                                     DateTimeFormatter.ISO_LOCAL_DATE ) );
+                    attributes.setProperty( "trackingCode", node.get( "data" ).get( "trackingCode" ).asText() );
 
                     break;
                 }
                 case "Employee":
                 {
-                    attributes.pairs.put( "num", node.get( "data" ).get( "num" ).asText() );
-                    attributes.pairs.put( "name", node.get( "data" ).get( "name" ).asText() );
-                    attributes.pairs.put( "gender", node.get( "data" ).get( "gender" ).asText() );
+                    attributes.setProperty( "num", node.get( "data" ).get( "num" ).asText() );
+                    attributes.setProperty( "name", node.get( "data" ).get( "name" ).asText() );
+                    attributes.setProperty( "gender", node.get( "data" ).get( "gender" ).asText() );
 
                     break;
                 }
                 case "Logistics":
                 {
-                    attributes.pairs.put( "num", node.get( "data" ).get( "num" ).asText() );
-                    attributes.pairs.put( "name", node.get( "data" ).get( "name" ).asText() );
+                    attributes.setProperty( "num", node.get( "data" ).get( "num" ).asText() );
+                    attributes.setProperty( "name", node.get( "data" ).get( "name" ).asText() );
 
                     break;
                 }
                 case "Product":
                 {
-                    attributes.pairs.put( "num", node.get( "data" ).get( "num" ).asText() );
-                    attributes.pairs.put( "name", node.get( "data" ).get( "name" ).asText() );
-                    attributes.pairs.put( "category", node.get( "data" ).get( "category" ).asText() );
-                    attributes.pairs.put( "price", new BigDecimal( node.get( "data" ).get( "price" ).asDouble() ) );
+                    attributes.setProperty( "num", node.get( "data" ).get( "num" ).asText() );
+                    attributes.setProperty( "name", node.get( "data" ).get( "name" ).asText() );
+                    attributes.setProperty( "category", node.get( "data" ).get( "category" ).asText() );
+                    attributes.setProperty( "price", new BigDecimal( node.get( "data" ).get( "price" ).asDouble() ) );
 
                     break;
                 }
                 case "PurchInvoice":
                 {
-                    attributes.pairs.put( "num", node.get( "data" ).get( "num" ).asText() );
-                    attributes.pairs.put( "date", LocalDate.parse( node.get( "data" ).get( "date" ).asText(),
-                                                                   DateTimeFormatter.ISO_LOCAL_DATE ) );
-                    attributes.pairs.put( "expense", new BigDecimal( node.get( "data" ).get( "expense" ).asDouble() ) );
-                    attributes.pairs.put( "text", node.get( "data" ).get( "text" ).asText() );
+                    attributes.setProperty( "num", node.get( "data" ).get( "num" ).asText() );
+                    attributes.setProperty( "date", LocalDate.parse( node.get( "data" ).get( "date" ).asText(),
+                                                                     DateTimeFormatter.ISO_LOCAL_DATE ) );
+                    attributes.setProperty( "expense", new BigDecimal( node.get( "data" ).get( "expense" ).asDouble() ) );
+                    attributes.setProperty( "text", node.get( "data" ).get( "text" ).asText() );
 
                     break;
                 }
                 case "PurchOrder":
                 {
-                    attributes.pairs.put( "num", node.get( "data" ).get( "num" ).asText() );
-                    attributes.pairs.put( "date", LocalDate.parse( node.get( "data" ).get( "date" ).asText(),
-                                                                   DateTimeFormatter.ISO_LOCAL_DATE ) );
+                    attributes.setProperty( "num", node.get( "data" ).get( "num" ).asText() );
+                    attributes.setProperty( "date", LocalDate.parse( node.get( "data" ).get( "date" ).asText(),
+                                                                     DateTimeFormatter.ISO_LOCAL_DATE ) );
 
                     break;
                 }
                 case "SalesInvoice":
                 {
-                    attributes.pairs.put( "num", node.get( "data" ).get( "num" ).asText() );
-                    attributes.pairs.put( "date", LocalDate.parse( node.get( "data" ).get( "date" ).asText(),
-                                                                   DateTimeFormatter.ISO_LOCAL_DATE ) );
-                    attributes.pairs.put( "revenue", new BigDecimal( node.get( "data" ).get( "revenue" ).asDouble() ) );
-                    attributes.pairs.put( "text", node.get( "data" ).get( "text" ).asText() );
+                    attributes.setProperty( "num", node.get( "data" ).get( "num" ).asText() );
+                    attributes.setProperty( "date", LocalDate.parse( node.get( "data" ).get( "date" ).asText(),
+                                                                     DateTimeFormatter.ISO_LOCAL_DATE ) );
+                    attributes.setProperty( "revenue", new BigDecimal( node.get( "data" ).get( "revenue" ).asDouble() ) );
+                    attributes.setProperty( "text", node.get( "data" ).get( "text" ).asText() );
 
                     break;
                 }
                 case "SalesOrder":
                 {
-                    attributes.pairs.put( "num", node.get( "data" ).get( "num" ).asText() );
-                    attributes.pairs.put( "date", LocalDate.parse( node.get( "data" ).get( "date" ).asText(),
-                                                                   DateTimeFormatter.ISO_LOCAL_DATE ) );
-                    attributes.pairs.put( "deliveryDate", LocalDate.parse( node.get( "data" ).get( "deliveryDate" ).asText(),
-                                                                           DateTimeFormatter.ISO_LOCAL_DATE ) );
+                    attributes.setProperty( "num", node.get( "data" ).get( "num" ).asText() );
+                    attributes.setProperty( "date", LocalDate.parse( node.get( "data" ).get( "date" ).asText(),
+                                                                     DateTimeFormatter.ISO_LOCAL_DATE ) );
+                    attributes.setProperty( "deliveryDate", LocalDate.parse( node.get( "data" ).get( "deliveryDate" ).asText(),
+                                                                             DateTimeFormatter.ISO_LOCAL_DATE ) );
 
                     break;
                 }
                 case "SalesQuotation":
                 {
-                    attributes.pairs.put( "num", node.get( "data" ).get( "num" ).asText() );
-                    attributes.pairs.put( "date", LocalDate.parse( node.get( "data" ).get( "date" ).asText(),
-                                                                   DateTimeFormatter.ISO_LOCAL_DATE ) );
+                    attributes.setProperty( "num", node.get( "data" ).get( "num" ).asText() );
+                    attributes.setProperty( "date", LocalDate.parse( node.get( "data" ).get( "date" ).asText(),
+                                                                     DateTimeFormatter.ISO_LOCAL_DATE ) );
 
                     break;
                 }
                 case "Ticket":
                 {
-                    attributes.pairs.put( "id", node.get( "data" ).get( "id" ).asInt() );
-                    attributes.pairs.put( "createdAt", LocalDate.parse( node.get( "data" ).get( "createdAt" ).asText(),
-                                                                        DateTimeFormatter.ISO_LOCAL_DATE ) );
-                    attributes.pairs.put( "problem", node.get( "data" ).get( "problem" ).asText() );
-                    attributes.pairs.put( "erpSoNum", node.get( "data" ).get( "erpSoNum" ).asText() );
+                    attributes.setProperty( "id", node.get( "data" ).get( "id" ).asInt() );
+                    attributes.setProperty( "createdAt", LocalDate.parse( node.get( "data" ).get( "createdAt" ).asText(),
+                                                                          DateTimeFormatter.ISO_LOCAL_DATE ) );
+                    attributes.setProperty( "problem", node.get( "data" ).get( "problem" ).asText() );
+                    attributes.setProperty( "erpSoNum", node.get( "data" ).get( "erpSoNum" ).asText() );
 
                     break;
                 }
                 case "User":
                 {
-                    attributes.pairs.put( "email", node.get( "data" ).get( "email" ).asText() );
-                    attributes.pairs.put( "name", node.get( "data" ).get( "name" ).asText() );
-                    attributes.pairs.put( "erpEmplNum", node.get( "data" ).get( "erpEmplNum" ).asText() );
+                    attributes.setProperty( "email", node.get( "data" ).get( "email" ).asText() );
+                    attributes.setProperty( "name", node.get( "data" ).get( "name" ).asText() );
+                    attributes.setProperty( "erpEmplNum", node.get( "data" ).get( "erpEmplNum" ).asText() );
 
                     break;
                 }
                 case "Vendor":
                 {
-                    attributes.pairs.put( "num", node.get( "data" ).get( "num" ).asText() );
-                    attributes.pairs.put( "name", node.get( "data" ).get( "name" ).asText() );
+                    attributes.setProperty( "num", node.get( "data" ).get( "num" ).asText() );
+                    attributes.setProperty( "name", node.get( "data" ).get( "name" ).asText() );
 
                     break;
                 }
@@ -195,23 +192,20 @@ public class TestGeneric
                 }
             }
 
-            return new Vertex<GenericAttributes>( node.get( "id" ).asLong(), attributes );
+            return new Vertex<Attributes>( node.get( "id" ).asLong(), attributes );
         }
     }
 
-    private static class EdgeMapper implements Function<JsonNode, Edge<GenericAttributes>>
+    private static class EdgeMapper implements Function<JsonNode, Edge<Attributes>>
     {
         private static final long serialVersionUID = 1L;
 
         @Override
-        public Edge<GenericAttributes> call( JsonNode node )
+        public Edge<Attributes> call( JsonNode node )
         {
-            GenericAttributes attributes = new GenericAttributes();
-            String            label      = node.get( "meta" ).get( "label" ).asText();
+            Attributes attributes = new Attributes( node.get( "meta" ).get( "label" ).asText() );
 
-            attributes.pairs.put( "label", label );
-
-            switch ( label )
+            switch ( attributes.getLabel() )
             {
                 case "allocatedTo":
                 case "basedOn":
@@ -232,23 +226,23 @@ public class TestGeneric
                 }
                 case "PurchOrderLine":
                 {
-                    attributes.pairs.put( "quantity", node.get( "data" ).get( "quantity" ).asInt() );
-                    attributes.pairs.put( "purchPrice", new BigDecimal( node.get( "data" ).get( "purchPrice" ).asDouble() ) );
+                    attributes.setProperty( "quantity", node.get( "data" ).get( "quantity" ).asInt() );
+                    attributes.setProperty( "purchPrice", new BigDecimal( node.get( "data" ).get( "purchPrice" ).asDouble() ) );
 
                     break;
                 }
                 case "SalesOrderLine":
                 {
-                    attributes.pairs.put( "quantity", node.get( "data" ).get( "quantity" ).asInt() );
-                    attributes.pairs.put( "salesPrice", new BigDecimal( node.get( "data" ).get( "salesPrice" ).asDouble() ) );
+                    attributes.setProperty( "quantity", node.get( "data" ).get( "quantity" ).asInt() );
+                    attributes.setProperty( "salesPrice", new BigDecimal( node.get( "data" ).get( "salesPrice" ).asDouble() ) );
 
                     break;
                 }
                 case "SalesQuotationLine":
                 {
-                    attributes.pairs.put( "quantity", node.get( "data" ).get( "quantity" ).asInt() );
-                    attributes.pairs.put( "salesPrice", new BigDecimal( node.get( "data" ).get( "salesPrice" ).asDouble() ) );
-                    attributes.pairs.put( "purchPrice", new BigDecimal( node.get( "data" ).get( "purchPrice" ).asDouble() ) );
+                    attributes.setProperty( "quantity", node.get( "data" ).get( "quantity" ).asInt() );
+                    attributes.setProperty( "salesPrice", new BigDecimal( node.get( "data" ).get( "salesPrice" ).asDouble() ) );
+                    attributes.setProperty( "purchPrice", new BigDecimal( node.get( "data" ).get( "purchPrice" ).asDouble() ) );
 
                     break;
                 }
@@ -258,7 +252,7 @@ public class TestGeneric
                 }
             }
 
-            return new Edge<GenericAttributes>( node.get( "source" ).asLong(), node.get( "target" ).asLong(), attributes );
+            return new Edge<Attributes>( node.get( "source" ).asLong(), node.get( "target" ).asLong(), attributes );
         }
     }
 }
