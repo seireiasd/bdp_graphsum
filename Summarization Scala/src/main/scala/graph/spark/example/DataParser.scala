@@ -18,7 +18,7 @@ object DataParser
     def parseGraph( vertexPath: String, edgePath: String, context: SparkContext ): Graph[Attributes, Attributes] =
     {
         val vertices = SparkParser.parseJson( context.textFile( vertexPath ), new VertexMapper() )
-        val edges    = SparkParser.parseJson( context.textFile( edgePath ), new EdgeMapper() );
+        val edges    = SparkParser.parseJson( context.textFile( edgePath ), new EdgeMapper() )
 
         Graph( vertices, edges )
     }
