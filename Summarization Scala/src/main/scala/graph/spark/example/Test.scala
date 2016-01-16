@@ -55,7 +55,7 @@ object Test
         System.out.println( "summarized edges: " + summarizedGraph.numEdges )
         System.out.println()
 
-        val endTime = System.nanoTime();
+        val endTime = System.nanoTime()
 
         System.out.println( "Elapsed milliseconds: " + ( endTime - startTime ) / 1000000 )
         System.out.println()
