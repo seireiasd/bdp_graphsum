@@ -1,14 +1,18 @@
 package graph.spark.example
 
-import java.math.BigDecimal
-
+import scala.math.BigDecimal
 import org.apache.log4j.Level
 import org.apache.log4j.Logger
 import org.apache.spark.SparkConf
 import org.apache.spark.SparkContext
+import org.apache.spark.graphx.Graph
 import org.apache.spark.graphx.Graph.graphToGraphOps
-
+import graph.spark.Attributes
 import graph.spark.summarization.GraphSummarizerSimple
+import graph.spark.summarization.property.PropertyCount
+import graph.spark.summarization.property.PropertySummarizer
+import graph.spark.summarization.property.PropertyMean
+import graph.spark.summarization.property.PropertySum
 
 object Test
 {
@@ -24,18 +28,24 @@ object Test
 
         graph.cache()
 
-        System.out.println( "vertices: " + graph.numVertices )
-        System.out.println( "edges: " + graph.numEdges )
-        System.out.println()
+        println( "vertices: " + graph.numVertices )
+        println( "edges: " + graph.numEdges )
+        println()
 
-        System.out.println( "first Customer.name: " +
-                            graph.vertices.filter( vertex => vertex._2.label.equals( "Customer" ) )
-                                          .collect()( 0 )._2.property[String]( "name" ) )
+        test3( graph )
+    }
 
-        System.out.println( "first PurchOrderLine.quantity: " +
-                            graph.edges.filter( edge => edge.attr.label.equals( "PurchOrderLine" ) )
-                                       .collect()( 0 ).attr.property[BigDecimal]( "quantity" ) )
+    def test1( graph: Graph[Attributes, Attributes] )
+    {
+        println( "first Customer.name: " + graph.vertices.filter( vertex => vertex._2.label.equals( "Customer" ) )
+                                                         .collect()( 0 )._2.property[String]( "name" ) )
 
+        println( "first PurchOrderLine.quantity: " + graph.edges.filter( edge => edge.attr.label.equals( "PurchOrderLine" ) )
+                                                                .collect()( 0 ).attr.property[BigDecimal]( "quantity" ) )
+    }
+
+    def test2( graph: Graph[Attributes, Attributes] )
+    {
         val startTime = System.nanoTime()
 
         val summarizedGraph = GraphSummarizerSimple( graph,
@@ -50,32 +60,93 @@ object Test
 
         summarizedGraph.cache()
 
-        System.out.println()
-        System.out.println( "summarized vertices: " + summarizedGraph.numVertices )
-        System.out.println( "summarized edges: " + summarizedGraph.numEdges )
-        System.out.println()
+        println( "summarized vertices: " + summarizedGraph.numVertices )
+        println( "summarized edges: " + summarizedGraph.numEdges )
+        println()
 
         val endTime = System.nanoTime()
 
-        System.out.println( "Elapsed milliseconds: " + ( endTime - startTime ) / 1000000 )
-        System.out.println()
+        println( "Elapsed milliseconds: " + ( endTime - startTime ) / 1000000 )
+        println()
 
         val summarizedVertices = summarizedGraph.vertices.collect()
         val summarizedEdges    = summarizedGraph.edges.collect()
 
-        System.out.println( "vertices:" )
+        println( "vertices:" )
 
         for ( vertex <- summarizedVertices )
         {
-            System.out.println( "\t( " + vertex._1 + ",\t( " + vertex._2._1 + ", " + vertex._2._2 + " ) )" )
+            println( "\t( " + vertex._1 + ",\t( " + vertex._2._1 + ", " + vertex._2._2 + " ) )" )
         }
 
-        System.out.println()
-        System.out.println( "edges:" )
+        println()
+        println( "edges:" )
 
         for ( edge <- summarizedEdges )
         {
-            System.out.println( "\t( " + edge.srcId + ",\t" + edge.dstId + ",\t( " + edge.attr._1 + ", " + edge.attr._2 + " ) )" )
+            println( "\t( " + edge.srcId + ",\t" + edge.dstId + ",\t( " + edge.attr._1 + ", " + edge.attr._2 + " ) )" )
+        }
+    }
+
+    def test3( graph: Graph[Attributes, Attributes] )
+    {
+        val startTime = System.nanoTime()
+
+        val summarizedGraph = PropertySummarizer( graph,
+                                                  ( vd: Attributes ) => vd.label,
+                                                  List( ( "name", "number of names", PropertyCount() ) ),
+                                                  ( ed: Attributes ) => ed.label,
+                                                  List( ( "quantity", "mean quantity", PropertyMean[Int] ),
+                                                        ( "salesPrice", "summed salesPrice", PropertySum[BigDecimal] ) ) )
+
+        summarizedGraph.cache()
+
+        println( "summarized vertices: " + summarizedGraph.numVertices )
+        println( "summarized edges: " + summarizedGraph.numEdges )
+        println()
+
+        val endTime = System.nanoTime()
+
+        println( "Elapsed milliseconds: " + ( endTime - startTime ) / 1000000 )
+        println()
+
+        val summarizedVertices = summarizedGraph.vertices.collect()
+        val summarizedEdges    = summarizedGraph.edges.collect()
+
+        println( "vertices:" )
+
+        for ( vertex <- summarizedVertices )
+        {
+            if ( vertex._2.properties.find( { case ( propName, propValue ) => { propName == "number of names" } } ).isDefined )
+            {
+                println( "\t( " + vertex._1 + ",\t( " + vertex._2.label + ", number of names: " + vertex._2.property[String]( "number of names" ) + " ) )" )
+            }
+            else
+            {
+                println( "\t( " + vertex._1 + ",\t( " + vertex._2.label + " ) )" )
+            }
+        }
+
+        println()
+        println( "edges:" )
+
+        for ( edge <- summarizedEdges )
+        {
+            if ( edge.attr.label == "PurchOrderLine" )
+            {
+                println( "\t( " + edge.srcId + ",\t" + edge.dstId + ",\t( " +
+                                  edge.attr.label + ", mean quantity: " + edge.attr.property[String]( "mean quantity" ) + " ) )" )
+            }
+            else if ( edge.attr.label == "SalesOrderLine" || edge.attr.label == "SalesQuotationLine" )
+            {
+                println( "\t( " + edge.srcId + ",\t" + edge.dstId + ",\t( " +
+                                  edge.attr.label + ", mean quantity: " + edge.attr.property[String]( "mean quantity" ) +
+                                                    ", summed salesPrice: " + edge.attr.property[String]( "summed salesPrice" ) + " ) )" )
+            }
+            else
+            {
+                println( "\t( " + edge.srcId + ",\t" + edge.dstId + ",\t( " + edge.attr.label + " ) ) )" )
+            }
         }
     }
 }
