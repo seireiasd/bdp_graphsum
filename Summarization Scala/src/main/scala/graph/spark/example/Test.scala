@@ -25,11 +25,10 @@ object Test
 
         System.setProperty( "spark.ui.showConsoleProgress", "false" )
 
-        val context = new SparkContext( new SparkConf().setAppName( "Spark Test" ).setMaster( "local[1]" ) )
-        val graph   = DataParser.parseGraph( "data/nodes.json", "data/edges.json", context )
+        val context = new SparkContext( new SparkConf().setAppName( "Spark Test" ).setMaster( "local[*]" ) )
+        val graph   = DataParser.parseGraph( "data/nodes.json", "data/edges.json", context ).cache()
 
-        graph.cache()
-
+        println()
         println( "vertices: " + graph.numVertices )
         println( "edges: " + graph.numEdges )
         println()

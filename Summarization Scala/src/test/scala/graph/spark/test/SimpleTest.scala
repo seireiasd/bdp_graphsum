@@ -20,8 +20,9 @@ import graph.spark.summarization.property.PropertySummarizer
 
 class SimpleTest extends FunSuite with BeforeAndAfterAll with Matchers
 {
-    var context: SparkContext                  = _
-    var graph:   Graph[Attributes, Attributes] = _
+    var context:    SparkContext                  = _
+    var graph:      Graph[Attributes, Attributes] = _
+    var labelCount: Long                          = 0l
 
     override def beforeAll()
     {
@@ -30,10 +31,9 @@ class SimpleTest extends FunSuite with BeforeAndAfterAll with Matchers
 
         System.setProperty( "spark.ui.showConsoleProgress", "false" )
 
-        context = new SparkContext( new SparkConf().setAppName( "Spark Test" ).setMaster( "local[1]" ) )
-        graph   = DataParser.parseGraph( "data/nodes.json", "data/edges.json", context )
-
-        graph.cache()
+        context    = new SparkContext( new SparkConf().setAppName( "Spark Test" ).setMaster( "local[*]" ) )
+        graph      = DataParser.parseGraph( "data/nodes.json", "data/edges.json", context ).cache()
+        labelCount = graph.vertices.map( { case ( vertexId, data ) => data.label } ).distinct().count()
     }
 
     override def afterAll()
@@ -41,8 +41,12 @@ class SimpleTest extends FunSuite with BeforeAndAfterAll with Matchers
         context.stop()
     }
 
-    test( "A simple summarizer shouldn't throw exceptions" )
+    test( "Running simple graph summarizer" )
     {
+        var vertexCount = 0l
+
+        info( "it shouldn't throw exceptions" )
+
         noException should be thrownBy
         {
             val summarizedGraph = GraphSummarizerSimple( graph,
@@ -55,14 +59,20 @@ class SimpleTest extends FunSuite with BeforeAndAfterAll with Matchers
                                                          ( lc1: ( String, Long ), lc2: ( String, Long ) ) => ( lc1._1, lc1._2 + lc2._2 ),
                                                          ( lc: ( String, Long ) ) => lc )
 
-            summarizedGraph.cache()
-
-            summarizedGraph.numVertices
+            vertexCount = summarizedGraph.numVertices
         }
+
+        info( "it should give " + labelCount + " summarized vertices" )
+
+        assert( vertexCount === labelCount )
     }
 
-    test( "A property summarizer shouldn't throw exceptions either" )
+    test( "Running property summarizer" )
     {
+        var vertexCount = 0l
+
+        info( "it shouldn't throw exceptions" )
+
         noException should be thrownBy
         {
             val summarizedGraph = PropertySummarizer( graph,
@@ -72,9 +82,11 @@ class SimpleTest extends FunSuite with BeforeAndAfterAll with Matchers
                                                       List( ( "quantity", "mean quantity", PropertyMean[Int] ),
                                                             ( "salesPrice", "summed salesPrice", PropertySum[BigDecimal] ) ) )
 
-            summarizedGraph.cache()
-
-            summarizedGraph.numVertices
+            vertexCount = summarizedGraph.numVertices
         }
+
+        info( "it should give " + labelCount + " summarized vertices" )
+
+        assert( vertexCount === labelCount )
     }
 }
