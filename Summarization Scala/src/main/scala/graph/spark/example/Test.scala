@@ -1,18 +1,20 @@
 package graph.spark.example
 
 import scala.math.BigDecimal
+
 import org.apache.log4j.Level
 import org.apache.log4j.Logger
 import org.apache.spark.SparkConf
 import org.apache.spark.SparkContext
 import org.apache.spark.graphx.Graph
 import org.apache.spark.graphx.Graph.graphToGraphOps
+
 import graph.spark.Attributes
 import graph.spark.summarization.GraphSummarizerSimple
 import graph.spark.summarization.property.PropertyCount
-import graph.spark.summarization.property.PropertySummarizer
 import graph.spark.summarization.property.PropertyMean
 import graph.spark.summarization.property.PropertySum
+import graph.spark.summarization.property.PropertySummarizer
 
 object Test
 {
