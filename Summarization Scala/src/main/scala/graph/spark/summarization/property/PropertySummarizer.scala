@@ -38,6 +38,8 @@ object PropertySummarizer
         {
             val builder = Map.newBuilder[String, Any]
 
+            // find all aggregation properties in vertex attributes and execute the respective preaggregation method
+
             for ( ( name, aggregateName, aggregator ) <- aggregators )
             {
                 vd.properties.find( { case ( propName, propValue ) => { name == propName } } )
@@ -50,6 +52,8 @@ object PropertySummarizer
         def aggregate( p1: Attributes, p2: Attributes ): Attributes =
         {
             val builder = Map.newBuilder[String, Any]
+
+            // find all aggregation properties in vertex attributes and execute the respective aggregation method
 
             for ( ( name, aggregateName, aggregator ) <- aggregators )
             {
@@ -71,6 +75,8 @@ object PropertySummarizer
         def postAggregate( aggregate: Attributes ): Attributes =
         {
             val builder = Map.newBuilder[String, Any]
+
+            // find all aggregation properties in vertex attributes, execute the respective postaggregation method and assign new property name
 
             for ( ( name, aggregateName, aggregator ) <- aggregators )
             {
