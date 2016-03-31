@@ -1,8 +1,7 @@
 package graph.spark.example
 
-import graph.spark.Attributes
-import graph.spark.multi.{Mapper, Parallel, Pipe, Reducer}
-import graph.spark.summarization.GraphSummarizerSimple
+import graph.spark.multi.Parallel
+import graph.spark.summarization.GraphSummarizer
 import org.apache.log4j.{Level, Logger}
 import org.apache.spark.graphx.Graph
 import org.apache.spark.{SparkConf, SparkContext}
@@ -39,15 +38,15 @@ object ExampleTest
     def test1( graph: Graph[Attributes, Attributes] )
     {
         val startTime       = System.nanoTime()
-        val summarizedGraph = GraphSummarizerSimple( graph,
-                                                     ( vd: Attributes ) => vd.label,
-                                                     ( vd: Attributes ) => ( vd.label, 1l ),
-                                                     ( lc1: ( String, Long ), lc2: ( String, Long ) ) => ( lc1._1, lc1._2 + lc2._2 ),
-                                                     ( lc: ( String, Long ) ) => lc,
-                                                     ( ed: Attributes ) => ed.label,
-                                                     ( ed: Attributes ) => ( ed.label, 1l ),
-                                                     ( lc1: ( String, Long ), lc2: ( String, Long ) ) => ( lc1._1, lc1._2 + lc2._2 ),
-                                                     ( lc: ( String, Long ) ) => lc )
+        val summarizedGraph = GraphSummarizer( graph,
+                                               ( vd: Attributes ) => vd.label,
+                                               ( vd: Attributes ) => ( vd.label, 1l ),
+                                               ( lc1: ( String, Long ), lc2: ( String, Long ) ) => ( lc1._1, lc1._2 + lc2._2 ),
+                                               ( lc: ( String, Long ) ) => lc,
+                                               ( ed: Attributes ) => ed.label,
+                                               ( ed: Attributes ) => ( ed.label, 1l ),
+                                               ( lc1: ( String, Long ), lc2: ( String, Long ) ) => ( lc1._1, lc1._2 + lc2._2 ),
+                                               ( lc: ( String, Long ) ) => lc )
 
         summarizedGraph.cache()
 
@@ -85,62 +84,11 @@ object ExampleTest
 
     def test2( graph: Graph[Attributes, Attributes] )
     {
-        val startTime = System.nanoTime()
-
-        object CountAll
-        {
-            def apply[T](): Pipe[T, Long] =
-            {
-                Mapper[T, Long]( _ => 1L ) -> Reducer[Long]( ( c1: Long, c2: Long ) => c1 + c2 )
-            }
-        }
-
-        object Sum
-        {
-            def apply[T](): Pipe[BigDecimal, BigDecimal] =
-            {
-                Reducer[BigDecimal]( ( c1: BigDecimal, c2: BigDecimal ) => c1 + c2 )
-            }
-        }
-
-        object Max
-        {
-            def apply[T](): Pipe[BigDecimal, BigDecimal] =
-            {
-                Reducer[BigDecimal]( ( c1: BigDecimal, c2: BigDecimal ) => c1.max( c2 ) )
-            }
-        }
-
-        object SelectAttribute
-        {
-            def apply[T]( name: String ): Pipe[Attributes, T] =
-            {
-                Mapper[Attributes, T]( x => x.property[T]( name ) )
-            }
-        }
-
-        object ToKeyValue
-        {
-            def apply[T]( name: String ): Pipe[T, ( String, Any )] =
-            {
-                Mapper[T, ( String, Any )]( x => ( name, x ) )
-            }
-        }
-
-        object CollectAttributes
-        {
-            def apply( label: String ): Pipe[( String, Any ), Attributes] =
-            {
-                Mapper[( String, Any ), Map[String, Any]]( x => Map( x ) ) ->
-                Reducer[Map[String, Any]]( ( m1, m2 ) => m1 ++ m2 ) ->
-                Mapper[Map[String, Any], Attributes]( x => Attributes( label, x ) )
-            }
-        }
-
+        val startTime        = System.nanoTime()
         val labelSelector    = ( data: Attributes ) => data.label
         val vertexAggregator = ( label: String ) => label match
                                {
-                                   case "SalesInvoice" => Parallel( Array( SelectAttribute[BigDecimal]( "revenue" ) -> Sum( ) -> ToKeyValue( "total revenue" ),
+                                   case "SalesInvoice" => Parallel( Array( SelectAttribute[BigDecimal]( "revenue" ) -> Sum() -> ToKeyValue( "total revenue" ),
                                                                            CountAll[Attributes]() -> ToKeyValue( "count" ) ) ) ->
                                                           CollectAttributes( "SalesInvoice" )
 
@@ -149,13 +97,14 @@ object ExampleTest
                                                           CollectAttributes( "PurchInvoice" )
 
                                    case "Product"      => Parallel( Array( SelectAttribute[BigDecimal]( "price" ) -> Max() -> ToKeyValue( "max price" ),
+                                                                           SelectAttribute[String]( "category" ) -> Count[String]() -> ToKeyValue( "number of categories" ),
                                                                            CountAll[Attributes]() -> ToKeyValue( "count" ) ) ) ->
                                                           CollectAttributes( "Product" )
 
                                    case _              => CountAll[Attributes]() -> ToKeyValue( "count" ) -> CollectAttributes( label )
                                }
         val edgeAggregator   = ( label: String ) => CountAll[Attributes]() -> ToKeyValue( "count" ) -> CollectAttributes( label )
-        val summarizedGraph  = GraphSummarizerSimple( graph, labelSelector, vertexAggregator, labelSelector, edgeAggregator ).cache()
+        val summarizedGraph  = GraphSummarizer( graph, labelSelector, vertexAggregator, labelSelector, edgeAggregator ).cache()
         val formatter        = java.text.NumberFormat.getIntegerInstance
 
         println( "summarized vertices: " + formatter.format( summarizedGraph.numVertices ) )
@@ -194,41 +143,12 @@ object ExampleTest
                 println( "\t\t\t" + prop._1 + " = " + prop._2 )
             }
         }
-
     }
 
     /*------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
     def test3( graph: Graph[Attributes, Attributes] )
     {
-        val startTime = System.nanoTime()
-
-        object CountAll
-        {
-            def apply[T](): Pipe[T, Long] =
-            {
-                Mapper[T, Long]( _ => 1L ) -> Reducer[Long]( ( c1: Long, c2: Long ) => c1 + c2 )
-            }
-        }
-
-        object ToKeyValue
-        {
-            def apply[T]( name: String ): Pipe[T, ( String, Any )] =
-            {
-                Mapper[T, ( String, Any )]( x => ( name, x ) )
-            }
-        }
-
-        object CollectAttributes
-        {
-            def apply( label: String ): Pipe[( String, Any ), Attributes] =
-            {
-                Mapper[( String, Any ), Map[String, Any]]( x => Map( x ) ) ->
-                Reducer[Map[String, Any]]( ( m1, m2 ) => m1 ++ m2 ) ->
-                Mapper[Map[String, Any], Attributes]( x => Attributes( label, x ) )
-            }
-        }
-
         object Cnt
         {
             private var cnt: Long = 0L
@@ -241,21 +161,22 @@ object ExampleTest
             }
         }
 
-        val summarizedGraph = GraphSummarizerSimple( graph,
-                                                     ( vd: Attributes ) => Cnt.get,
-                                                     ( group: Long ) => CountAll[Attributes]() -> ToKeyValue( "count" ) -> CollectAttributes( group.toString ),
-                                                     ( ed: Attributes ) => Cnt.get,
-                                                     ( group: Long ) => CountAll[Attributes]() -> ToKeyValue( "count" ) -> CollectAttributes( group.toString ) )
+        val startTime       = System.nanoTime()
+        val summarizedGraph = GraphSummarizer( graph,
+                                               ( vd: Attributes ) => Cnt.get,
+                                               ( group: Long ) => CountAll[Attributes]() -> ToKeyValue( "count" ) -> CollectAttributes( group.toString ),
+                                               ( ed: Attributes ) => Cnt.get,
+                                               ( group: Long ) => CountAll[Attributes]() -> ToKeyValue( "count" ) -> CollectAttributes( group.toString ) )
 /*
-        val summarizedGraph = GraphSummarizerSimple( graph,
-                                                     ( vd: Attributes ) => Cnt.get,
-                                                     ( vd: Attributes ) => ( vd.label, 1l ),
-                                                     ( lc1: ( String, Long ), lc2: ( String, Long ) ) => ( lc1._1, lc1._2 + lc2._2 ),
-                                                     ( lc: ( String, Long ) ) => lc,
-                                                     ( ed: Attributes ) => Cnt.get,
-                                                     ( ed: Attributes ) => ( ed.label, 1l ),
-                                                     ( lc1: ( String, Long ), lc2: ( String, Long ) ) => ( lc1._1, lc1._2 + lc2._2 ),
-                                                     ( lc: ( String, Long ) ) => lc )
+        val summarizedGraph = GraphSummarizer( graph,
+                                               ( vd: Attributes ) => Cnt.get,
+                                               ( vd: Attributes ) => ( vd.label, 1l ),
+                                               ( lc1: ( String, Long ), lc2: ( String, Long ) ) => ( lc1._1, lc1._2 + lc2._2 ),
+                                               ( lc: ( String, Long ) ) => lc,
+                                               ( ed: Attributes ) => Cnt.get,
+                                               ( ed: Attributes ) => ( ed.label, 1l ),
+                                               ( lc1: ( String, Long ), lc2: ( String, Long ) ) => ( lc1._1, lc1._2 + lc2._2 ),
+                                               ( lc: ( String, Long ) ) => lc )
 */
         summarizedGraph.cache()
 
@@ -271,4 +192,5 @@ object ExampleTest
         println()
     }
 }
+
 /*----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/

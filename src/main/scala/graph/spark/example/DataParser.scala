@@ -4,13 +4,14 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
 import com.fasterxml.jackson.databind.JsonNode
-import graph.spark.Attributes
 import graph.spark.parser.SparkParser
 import org.apache.spark.SparkContext
 import org.apache.spark.graphx.{Edge, Graph, VertexId}
 
 import scala.collection.immutable.Map
 import scala.math.BigDecimal
+
+/*----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
 object DataParser
 {
@@ -22,7 +23,8 @@ object DataParser
         Graph( vertices, edges )
     }
 
-    @SerialVersionUID( 1L )
+    /*------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
+
     private class VertexMapper extends ( JsonNode => ( VertexId, Attributes ) ) with Serializable
     {
         def apply( node: JsonNode ): ( VertexId, Attributes ) =
@@ -94,7 +96,8 @@ object DataParser
         }
     }
 
-    @SerialVersionUID( 1L )
+    /*------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
+
     private class EdgeMapper extends ( JsonNode => Edge[Attributes] ) with Serializable
     {
         def apply( node: JsonNode ): Edge[Attributes] =
@@ -135,3 +138,5 @@ object DataParser
         }
     }
 }
+
+/*----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/

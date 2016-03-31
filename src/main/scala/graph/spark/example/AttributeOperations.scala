@@ -1,60 +1,65 @@
-package graph.spark.multi
+package graph.spark.example
+
+import graph.spark.multi.{Mapper, Partitioned, Pipe, Reducer}
+
+import scala.math.Numeric
 
 /*----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
-class Pipe[U, V] private ( private[multi] val processors: Array[Operation], private[multi] val boundaries: Int ) extends Serializable
+object CountAll
 {
-    def ->[W]( next: Pipe[V, W] ): Pipe[U, W] =
-        new Pipe[U, W]( processors ++ next.processors, boundaries + next.boundaries )
+    def apply[T](): Pipe[T, Long] =
+        Mapper[T, Long]( _ => 1L ) -> Reducer[Long]( ( c1: Long, c2: Long ) => c1 + c2 )
 }
 
 /*----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
-object Pipe
+object Count
 {
-    def apply[T](): Pipe[T, T] =
-        apply[T, T]( Array[Operation](), 0 )
-
-    private[multi] def apply[U, V]( processors: Array[Operation], boundaries: Int ): Pipe[U, V] =
-                       new Pipe[U, V]( processors, boundaries )
+    def apply[T](): Pipe[T, Long] =
+        Partitioned( identity[T], Reducer[T]( ( t1, t2 ) => t1 ) ) -> CountAll[T]()
 }
 
 /*----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
-object Mapper
+object Sum
 {
-    def apply[U, V]( map: U => V ): Pipe[U, V] =
-        Pipe[U, V]( Array( new MapOperation( map.asInstanceOf[Any => Any] ) ), 0 )
+    def apply[T: Numeric](): Pipe[T, T] =
+        Reducer[T]( ( c1: T, c2: T ) => implicitly[Numeric[T]].plus( c1, c2 ) )
 }
 
 /*----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
-object Reducer
+object Max
 {
-    def apply[T]( reduce: ( T, T ) => T ): Pipe[T, T] =
-        Pipe[T, T]( Array( new ReduceOperation( reduce.asInstanceOf[( Any, Any ) => Any] ) ), 1 )
+    def apply[T: Numeric](): Pipe[T, T] =
+        Reducer[T]( ( c1: T, c2: T ) => implicitly[Numeric[T]].max( c1, c2 ) )
 }
 
 /*----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
-object Partitioned
+object SelectAttribute
 {
-    def apply[U, V]( assign: U => Any, pipe: Pipe[U, V] ): Pipe[U, V] =
-        Pipe[U, V]( Array( new PartitionedPushOperation( assign.asInstanceOf[Any => Any], pipe.processors ) ), pipe.boundaries )
+    def apply[T]( name: String ): Pipe[Attributes, T] =
+        Mapper[Attributes, T]( x => x.property[T]( name ) )
 }
 
 /*----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
-object Parallel
+object ToKeyValue
 {
-    def apply[U, V]( pipes: Array[Pipe[U, V]] ): Pipe[U, V] =
-    {
-        require( pipes.nonEmpty )
+    def apply[T]( name: String ): Pipe[T, ( String, Any )] =
+        Mapper[T, ( String, Any )]( x => ( name, x ) )
+}
 
-        val max = pipes.maxBy( pipe => pipe.boundaries ).boundaries
+/*----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
-        Pipe[U, V]( Array( new ParallelPushOperation( pipes.map( pipe => pipe.processors :+ new WaitOperation( max - pipe.boundaries ) ) ) ), max + 1 )
-    }
+object CollectAttributes
+{
+    def apply( label: String ): Pipe[( String, Any ), Attributes] =
+        Mapper[( String, Any ), Map[String, Any]]( x => Map( x ) ) ->
+        Reducer[Map[String, Any]]( ( m1, m2 ) => m1 ++ m2 ) ->
+        Mapper[Map[String, Any], Attributes]( x => Attributes( label, x ) )
 }
 
 /*----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/

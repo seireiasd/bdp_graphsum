@@ -8,7 +8,7 @@ import scala.reflect.ClassTag
 
 /*----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
-object GraphSummarizerSimple
+object GraphSummarizer
 {
     def apply[VD, ED, VDA: ClassTag, VDS: ClassTag, EDA: ClassTag, EDS: ClassTag]
              ( graph:                Graph[VD, ED],

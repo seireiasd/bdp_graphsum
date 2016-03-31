@@ -1,4 +1,4 @@
-package graph.spark
+package graph.spark.example
 
 import scala.collection.immutable.Map
 
