@@ -14,9 +14,10 @@ import scala.math.BigDecimal
 
 class SimpleTest extends FunSuite with BeforeAndAfterAll with Matchers
 {
-    var context:    SparkContext                  = _
-    var graph:      Graph[Attributes, Attributes] = _
-    var labelCount: Long                          = 0L
+    var context    : SparkContext                  = _
+    var graph      : Graph[Attributes, Attributes] = _
+    var vertexCount: Long                          = 0L
+    var edgeCount  : Long                          = 0L
 
     /*------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
@@ -27,9 +28,10 @@ class SimpleTest extends FunSuite with BeforeAndAfterAll with Matchers
 
         System.setProperty( "spark.ui.showConsoleProgress", "false" )
 
-        context    = new SparkContext( new SparkConf().setAppName( "Spark Test" ).setMaster( "local[*]" ) )
-        graph      = DataParser.parseGraph( "data/nodes.json", "data/edges.json", context ).cache()
-        labelCount = graph.vertices.map( { case ( vertexId, data ) => data.label } ).distinct().count()
+        context     = new SparkContext( new SparkConf().setAppName( "Spark Test" ).setMaster( "local[*]" ) )
+        graph       = DataParser.parseGraph( "data/nodes.json", "data/edges.json", context ).cache()
+        vertexCount = graph.vertices.map( { case ( vertexId, data ) => data.label } ).distinct().count()
+        edgeCount   = graph.edges.map( edge => edge.attr.label ).distinct().count()
     }
 
     /*------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
@@ -43,7 +45,8 @@ class SimpleTest extends FunSuite with BeforeAndAfterAll with Matchers
 
     test( "Running simple summarizer" )
     {
-        var vertexCount = 0L
+        var vertexCheckCount = 0L
+        var edgeCheckCount   = 0L
 
         info( "it shouldn't throw exceptions" )
 
@@ -59,19 +62,24 @@ class SimpleTest extends FunSuite with BeforeAndAfterAll with Matchers
                                                    ( lc1: ( String, Long ), lc2: ( String, Long ) ) => ( lc1._1, lc1._2 + lc2._2 ),
                                                    ( lc: ( String, Long ) ) => lc )
 
-            vertexCount = summarizedGraph.numVertices
+            summarizedGraph.cache()
+
+            vertexCheckCount = summarizedGraph.numVertices
+            edgeCheckCount   = summarizedGraph.numEdges
         }
 
-        info( "it should give " + labelCount + " summarized vertices" )
+        info( "it should give " + vertexCount + " summarized vertices and " + edgeCount + " summarized edges" )
 
-        assert( vertexCount === labelCount )
+        assert( vertexCheckCount === vertexCount )
+        assert( edgeCheckCount === edgeCount )
     }
 
     /*------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
     test( "Running multi-path summarizer" )
     {
-        var vertexCount = 0L
+        var vertexCheckCount = 0L
+        var edgeCheckCount   = 0L
 
         info( "it shouldn't throw exceptions" )
 
@@ -98,12 +106,16 @@ class SimpleTest extends FunSuite with BeforeAndAfterAll with Matchers
             val edgeAggregator   = ( label: String ) => CountAll[Attributes]() -> ToKeyValue( "count" ) -> CollectAttributes( label )
             val summarizedGraph  = GraphSummarizer( graph, labelSelector, vertexAggregator, labelSelector, edgeAggregator ).cache()
 
-            vertexCount = summarizedGraph.numVertices
+            summarizedGraph.cache()
+
+            vertexCheckCount = summarizedGraph.numVertices
+            edgeCheckCount   = summarizedGraph.numEdges
         }
 
-        info( "it should give " + labelCount + " summarized vertices" )
+        info( "it should give " + vertexCount + " summarized vertices and " + edgeCount + " summarized edges" )
 
-        assert( vertexCount === labelCount )
+        assert( vertexCheckCount === vertexCount )
+        assert( edgeCheckCount === edgeCount )
     }
 }
 

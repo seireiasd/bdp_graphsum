@@ -7,6 +7,13 @@ import scala.collection.mutable.ArrayBuffer
 
 /*----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
+/**
+  * Allows the execution of distinct operator sequences on key-grouped RDDs.
+  *
+  * @param rdd  a key-value rdd
+  * @tparam Key the key type
+  * @tparam T   the value type
+  */
 class OperatorRDD[Key, T]( rdd: RDD[( Key, T )] )
 {
     def runOperations[U]( operator: Key => Pipe[T, U] ): RDD[( Key, U )] =
@@ -30,8 +37,17 @@ class OperatorRDD[Key, T]( rdd: RDD[( Key, T )] )
 
 /*----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
+/**
+  * Auxiliary functions for OperatorRDD.
+  */
 private[multi] object OperatorRDD
 {
+
+    /**
+      * Partitions data according to a key's partition index if it's positive or hash partitions it if it's negative.
+      *
+      * @param partitions the number of partitions
+      */
     class BoundaryPartitioner( partitions: Int ) extends Partitioner
     {
         override def numPartitions: Int =
@@ -88,6 +104,16 @@ private[multi] object OperatorRDD
 
     /*------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
+    /**
+      * Collects the groups and initializes their respective operator sequences.
+      *
+      * @param operator assigns operator sequences to groups
+      * @param it       the input data iterator
+      * @tparam Key     the key type
+      * @tparam T       the input data type
+      * @tparam U       the output data type
+      * @return         the output data iterator
+      */
     def initialize[Key, T, U]( operator: Key => Pipe[T, U] )( it: Iterator[( Key, T )] ): Iterator[PipeKeyGroup[T, U]] =
     {
         val result = new PipeKeyGroupMap[T, U]()
@@ -104,6 +130,13 @@ private[multi] object OperatorRDD
 
     /*------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
+    /**
+      * Runs a stage, including preShuffle steps.
+      *
+      * @param idx the local partition's index
+      * @param it  the input data iterator
+      * @return    the output data iterator
+      */
     def runStage( idx: Int, it: Iterator[KeyGroup] ): Iterator[ShuffleKeyValue] =
     {
         var elems     = it
@@ -141,6 +174,12 @@ private[multi] object OperatorRDD
 
     /*------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
+    /**
+      * Collects the groups after shuffling and runs the postShuffle step.
+      *
+      * @param it the input data iterator
+      * @return   the output data iterator
+      */
     def runPostShuffle( it: Iterator[ShuffleKeyValue] ): Iterator[KeyGroup] =
     {
         val collected = new KeyGroupMap()

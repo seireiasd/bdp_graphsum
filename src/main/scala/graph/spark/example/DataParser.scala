@@ -29,8 +29,7 @@ object DataParser
     {
         def apply( node: JsonNode ): ( VertexId, Attributes ) =
         {
-            val label = node.get( "meta" ).get( "label" ).asText()
-
+            val label      = node.get( "meta" ).get( "label" ).asText()
             val properties = label match
             {
                 case "Client"         => Map( ( "account", node.get( "data" ).get( "account" ).asText() ),
@@ -102,8 +101,7 @@ object DataParser
     {
         def apply( node: JsonNode ): Edge[Attributes] =
         {
-            val label = node.get( "meta" ).get( "label" ).asText()
-
+            val label      = node.get( "meta" ).get( "label" ).asText()
             val properties = label match
             {
                 case "allocatedTo"        |

@@ -8,8 +8,31 @@ import scala.reflect.ClassTag
 
 /*----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
+/**
+  * Groups vertices and edges of an arbitrary graph by vertex and edge attributes.
+  */
 object GraphSummarizer
 {
+    /**
+      * Simple summarizer using a single reduce operation to group vertices and edges.
+      *
+      * @param graph                the input graph
+      * @param vertexGroupSelector  assigns vertex group
+      * @param vertexPreAggregator  transforms vertex data to intermediate format for reduction
+      * @param vertexAggregator     reduces intermediate vertex data
+      * @param vertexPostAggregator transforms intermediate vertex data to target format
+      * @param edgeGroupSelector    assigns edge group
+      * @param edgePreAggregator    transforms edge data to intermediate format for reduction
+      * @param edgeAggregator       reduces intermediate edge data
+      * @param edgePostAggregator   transforms intermediate edge data to target format
+      * @tparam VD                  input vertex data type
+      * @tparam ED                  input edge data type
+      * @tparam VDA                 intermediate vertex data type
+      * @tparam VDS                 target vertex data type
+      * @tparam EDA                 intermediate edge data type
+      * @tparam EDS                 target edge data type
+      * @return                     the summarized graph
+      */
     def apply[VD, ED, VDA: ClassTag, VDS: ClassTag, EDA: ClassTag, EDS: ClassTag]
              ( graph:                Graph[VD, ED],
                vertexGroupSelector:  VD => Any,
@@ -33,7 +56,7 @@ object GraphSummarizer
         // create a map ( old vertex id ) => ( new vertex id )
 
         val representativeMap = keyIdRdd.join( representativeKeyRdd )
-                                        .map( { case ( key, ( oldVertexId, newVertexId ) ) => ( oldVertexId, newVertexId ) } ).cache()
+                                        .map( { case ( key, ( oldVertexId, newVertexId ) ) => ( oldVertexId, newVertexId ) } )
 
         // assign group vertex ids and aggregate vertex groups
 
@@ -53,8 +76,6 @@ object GraphSummarizer
                                          .reduceByKey( edgeAggregator )
                                          .map( { case ( ( sourceId, targetId, key ), data ) => Edge( sourceId, targetId, edgePostAggregator( data ) ) } )
 
-        representativeMap.unpersist()
-
         // return summarized graph
 
         Graph( summarizedVertices, summarizedEdges )
@@ -62,6 +83,22 @@ object GraphSummarizer
 
     /*------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
+    /**
+      * Multi-path summarizer allowing the application of different grouping operations for distinct vertex and edge groups.
+      *
+      * @param graph               the input graph
+      * @param vertexGroupSelector assigns vertex group
+      * @param vertexAggregator    assigns operator sequences to vertex groups
+      * @param edgeGroupSelector   assigns edge group
+      * @param edgeAggregator      assigns operator sequences to edge groups
+      * @tparam VD                 input vertex data type
+      * @tparam ED                 input edge data type
+      * @tparam VKey               vertex group key type
+      * @tparam EKey               edge group key type
+      * @tparam VDS                target vertex data type
+      * @tparam EDS                target edge data type
+      * @return                    the summarized graph
+      */
     def apply[VD, ED, VKey: ClassTag, EKey: ClassTag, VDS: ClassTag, EDS: ClassTag]
              ( graph:               Graph[VD, ED],
                vertexGroupSelector: VD => VKey,
