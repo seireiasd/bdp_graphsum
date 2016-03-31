@@ -3,25 +3,21 @@ package graph.spark.example
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
+import com.fasterxml.jackson.databind.JsonNode
+import graph.spark.Attributes
+import graph.spark.parser.SparkParser
+import org.apache.spark.SparkContext
+import org.apache.spark.graphx.{Edge, Graph, VertexId}
+
 import scala.collection.immutable.Map
 import scala.math.BigDecimal
 
-import org.apache.spark.SparkContext
-import org.apache.spark.graphx.Edge
-import org.apache.spark.graphx.Graph
-import org.apache.spark.graphx.VertexId
-
-import com.fasterxml.jackson.databind.JsonNode
-
-import graph.spark.Attributes
-import graph.spark.parser.SparkParser
-
 object DataParser
 {
-    def parseGraph( vertexPath: String, edgePath: String, context: SparkContext ): Graph[Attributes, Attributes] =
+    def parseGraph( vertexPath: String, edgePath: String, context: SparkContext, minPartitions: Int = 1 ): Graph[Attributes, Attributes] =
     {
-        val vertices = SparkParser.parseJson( context.textFile( vertexPath ), new VertexMapper() )
-        val edges    = SparkParser.parseJson( context.textFile( edgePath ), new EdgeMapper() )
+        val vertices = SparkParser.parseJson( context.textFile( vertexPath, minPartitions ), new VertexMapper() )
+        val edges    = SparkParser.parseJson( context.textFile( edgePath, minPartitions ), new EdgeMapper() )
 
         Graph( vertices, edges )
     }
@@ -44,8 +40,7 @@ object DataParser
                                               ( "name", node.get( "data" ).get( "name" ).asText() ) )
 
                 case "DeliveryNote"   => Map( ( "num", node.get( "data" ).get( "num" ).asText() ),
-                                              ( "date", LocalDate.parse( node.get( "data" ).get( "date" ).asText(),
-                                                                         DateTimeFormatter.ISO_LOCAL_DATE ) ),
+                                              ( "date", LocalDate.parse( node.get( "data" ).get( "date" ).asText(), DateTimeFormatter.ISO_LOCAL_DATE ) ),
                                               ( "trackingCode", node.get( "data" ).get( "trackingCode" ).asText() ) )
 
                 case "Employee"       => Map( ( "num", node.get( "data" ).get( "num" ).asText() ),
@@ -61,34 +56,27 @@ object DataParser
                                               ( "price", BigDecimal( node.get( "data" ).get( "price" ).asDouble() ) ) )
 
                 case "PurchInvoice"   => Map( ( "num", node.get( "data" ).get( "num" ).asText() ),
-                                              ( "date", LocalDate.parse( node.get( "data" ).get( "date" ).asText(),
-                                                                         DateTimeFormatter.ISO_LOCAL_DATE ) ),
+                                              ( "date", LocalDate.parse( node.get( "data" ).get( "date" ).asText(), DateTimeFormatter.ISO_LOCAL_DATE ) ),
                                               ( "expense", BigDecimal( node.get( "data" ).get( "expense" ).asDouble() ) ),
                                               ( "text", node.get( "data" ).get( "text" ).asText() ) )
 
                 case "PurchOrder"     => Map( ( "num", node.get( "data" ).get( "num" ).asText() ),
-                                              ( "date", LocalDate.parse( node.get( "data" ).get( "date" ).asText(),
-                                                                         DateTimeFormatter.ISO_LOCAL_DATE ) ) )
+                                              ( "date", LocalDate.parse( node.get( "data" ).get( "date" ).asText(), DateTimeFormatter.ISO_LOCAL_DATE ) ) )
 
                 case "SalesInvoice"   => Map( ( "num", node.get( "data" ).get( "num" ).asText() ),
-                                              ( "date", LocalDate.parse( node.get( "data" ).get( "date" ).asText(),
-                                                                         DateTimeFormatter.ISO_LOCAL_DATE ) ),
+                                              ( "date", LocalDate.parse( node.get( "data" ).get( "date" ).asText(), DateTimeFormatter.ISO_LOCAL_DATE ) ),
                                               ( "revenue", BigDecimal( node.get( "data" ).get( "revenue" ).asDouble() ) ),
                                               ( "text", node.get( "data" ).get( "text" ).asText() ) )
 
                 case "SalesOrder"     => Map( ( "num", node.get( "data" ).get( "num" ).asText() ),
-                                              ( "date", LocalDate.parse( node.get( "data" ).get( "date" ).asText(),
-                                                                         DateTimeFormatter.ISO_LOCAL_DATE ) ),
-                                              ( "deliveryDate", LocalDate.parse( node.get( "data" ).get( "deliveryDate" ).asText(),
-                                                                                 DateTimeFormatter.ISO_LOCAL_DATE ) ) )
+                                              ( "date", LocalDate.parse( node.get( "data" ).get( "date" ).asText(), DateTimeFormatter.ISO_LOCAL_DATE ) ),
+                                              ( "deliveryDate", LocalDate.parse( node.get( "data" ).get( "deliveryDate" ).asText(), DateTimeFormatter.ISO_LOCAL_DATE ) ) )
 
                 case "SalesQuotation" => Map( ( "num", node.get( "data" ).get( "num" ).asText() ),
-                                              ( "date", LocalDate.parse( node.get( "data" ).get( "date" ).asText(),
-                                                                         DateTimeFormatter.ISO_LOCAL_DATE ) ) )
+                                              ( "date", LocalDate.parse( node.get( "data" ).get( "date" ).asText(), DateTimeFormatter.ISO_LOCAL_DATE ) ) )
 
                 case "Ticket"         => Map( ( "id", node.get( "data" ).get( "id" ).asInt() ),
-                                              ( "createdAt", LocalDate.parse( node.get( "data" ).get( "createdAt" ).asText(),
-                                                                              DateTimeFormatter.ISO_LOCAL_DATE ) ),
+                                              ( "createdAt", LocalDate.parse( node.get( "data" ).get( "createdAt" ).asText(), DateTimeFormatter.ISO_LOCAL_DATE ) ),
                                               ( "problem", node.get( "data" ).get( "problem" ).asText() ),
                                               ( "erpSoNum", node.get( "data" ).get( "erpSoNum" ).asText() ) )
 
