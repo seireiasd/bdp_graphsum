@@ -17,7 +17,6 @@ class SimpleTest extends FunSuite with BeforeAndAfterAll with Matchers
     var context    : SparkContext                  = _
     var graph      : Graph[Attributes, Attributes] = _
     var vertexCount: Long                          = 0L
-    var edgeCount  : Long                          = 0L
 
     /*------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
@@ -31,7 +30,6 @@ class SimpleTest extends FunSuite with BeforeAndAfterAll with Matchers
         context     = new SparkContext( new SparkConf().setAppName( "Spark Test" ).setMaster( "local[*]" ) )
         graph       = DataParser.parseGraph( "data/nodes.json", "data/edges.json", context ).cache()
         vertexCount = graph.vertices.map( { case ( vertexId, data ) => data.label } ).distinct().count()
-        edgeCount   = graph.edges.map( edge => edge.attr.label ).distinct().count()
     }
 
     /*------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
@@ -46,7 +44,6 @@ class SimpleTest extends FunSuite with BeforeAndAfterAll with Matchers
     test( "Running simple summarizer" )
     {
         var vertexCheckCount = 0L
-        var edgeCheckCount   = 0L
 
         info( "it shouldn't throw exceptions" )
 
@@ -62,16 +59,12 @@ class SimpleTest extends FunSuite with BeforeAndAfterAll with Matchers
                                                    ( lc1: ( String, Long ), lc2: ( String, Long ) ) => ( lc1._1, lc1._2 + lc2._2 ),
                                                    ( lc: ( String, Long ) ) => lc )
 
-            summarizedGraph.cache()
-
             vertexCheckCount = summarizedGraph.numVertices
-            edgeCheckCount   = summarizedGraph.numEdges
         }
 
-        info( "it should give " + vertexCount + " summarized vertices and " + edgeCount + " summarized edges" )
+        info( "it should give " + vertexCount + " summarized vertices" )
 
         assert( vertexCheckCount === vertexCount )
-        assert( edgeCheckCount === edgeCount )
     }
 
     /*------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
@@ -79,7 +72,6 @@ class SimpleTest extends FunSuite with BeforeAndAfterAll with Matchers
     test( "Running multi-path summarizer" )
     {
         var vertexCheckCount = 0L
-        var edgeCheckCount   = 0L
 
         info( "it shouldn't throw exceptions" )
 
@@ -104,18 +96,14 @@ class SimpleTest extends FunSuite with BeforeAndAfterAll with Matchers
                 case _              => CountAll[Attributes]() -> ToKeyValue( "count" ) -> CollectAttributes( label )
             }
             val edgeAggregator   = ( label: String ) => CountAll[Attributes]() -> ToKeyValue( "count" ) -> CollectAttributes( label )
-            val summarizedGraph  = GraphSummarizer( graph, labelSelector, vertexAggregator, labelSelector, edgeAggregator ).cache()
-
-            summarizedGraph.cache()
+            val summarizedGraph  = GraphSummarizer( graph, labelSelector, vertexAggregator, labelSelector, edgeAggregator )
 
             vertexCheckCount = summarizedGraph.numVertices
-            edgeCheckCount   = summarizedGraph.numEdges
         }
 
-        info( "it should give " + vertexCount + " summarized vertices and " + edgeCount + " summarized edges" )
+        info( "it should give " + vertexCount + " summarized vertices" )
 
         assert( vertexCheckCount === vertexCount )
-        assert( edgeCheckCount === edgeCount )
     }
 }
 
